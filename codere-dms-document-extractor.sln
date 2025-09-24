@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureFunction_LicenseExtractor", "AzureFunction_LicenseExtractor.csproj", "{D49F4F1F-59EE-2EFB-BCEF-48DCF2FC8812}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D49F4F1F-59EE-2EFB-BCEF-48DCF2FC8812}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D49F4F1F-59EE-2EFB-BCEF-48DCF2FC8812}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D49F4F1F-59EE-2EFB-BCEF-48DCF2FC8812}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D49F4F1F-59EE-2EFB-BCEF-48DCF2FC8812}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {53A097E9-EBB9-4D84-A35F-47E5F43C8A26}
+	EndGlobalSection
+EndGlobal

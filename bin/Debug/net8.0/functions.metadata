@@ -1,0 +1,29 @@
+[
+  {
+    "name": "ExtractLicenseMetadata",
+    "scriptFile": "AzureFunction_LicenseExtractor.dll",
+    "entryPoint": "ExtractLicenseMetadata.Run",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "route": "extract",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  }
+]
