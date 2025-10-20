@@ -3,8 +3,8 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-    "DOCINTEL_ENDPOINT": "https://<your-docintelligence-name>.cognitiveservices.azure.com/",
-    "DOCINTEL_KEY": "<your-docintelligence-key>",
+    "DOCINTEL_ENDPOINT": "https://gesdocobrasyexpansion.cognitiveservices.azure.com/",
+    "DOCINTEL_KEY": "set-in-env",
     "DEFAULT_LANGUAGE": "es"
   }
 }
