@@ -11,6 +11,7 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
+  DOTNET_PROJECT_PATH: './AzureFunction_LicenseExtractor.csproj'
   DOTNET_VERSION: '8.0.x' # set this to the dotnet version to use
 
 jobs:
@@ -29,9 +30,7 @@ jobs:
       - name: 'Resolve Project Dependencies Using Dotnet'
         shell: pwsh
         run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release --output ./output
-          popd
+          dotnet build '${{ env.DOTNET_PROJECT_PATH }}' --configuration Release --output './output'
       
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
