@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AzureFunction_LicenseExtractor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+897e9a4ab4843752047283385e07b372eeebd20d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8161c6e82526c03a42d57cb0792aac6f69aa2bc2")]
 [assembly: System.Reflection.AssemblyProductAttribute("AzureFunction_LicenseExtractor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AzureFunction_LicenseExtractor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

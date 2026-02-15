@@ -1,5 +1,32 @@
 [
   {
+    "name": "DetectPersonalData",
+    "scriptFile": "AzureFunction_LicenseExtractor.dll",
+    "entryPoint": "DetectPersonalData.Run",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "route": "detect-personal-data",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
+  },
+  {
     "name": "ExtractLicenseMetadata",
     "scriptFile": "AzureFunction_LicenseExtractor.dll",
     "entryPoint": "ExtractLicenseMetadata.Run",

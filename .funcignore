@@ -1,0 +1,12 @@
+bin
+obj
+.git
+.vscode
+.vs
+TestResults
+node_modules
+packages
+local.settings.json
+*.user
+*.suo
+local.settings.json

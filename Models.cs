@@ -26,3 +26,22 @@ public sealed class ExtractResult
     public List<string> PalabrasClaveDetectadas { get; set; } = new();
     public string? Resumen { get; set; }
 }
+
+public sealed class PersonalDataDetectionRequest
+{
+    public string? FileName { get; set; }
+    public string? ContentBase64 { get; set; }
+}
+
+public sealed class PersonalDataDetectionResult
+{
+    public string? FileType { get; set; }
+    public bool ContainsPersonalData { get; set; }
+    public bool ContainsSpecialCategoryData { get; set; }
+    public double Score { get; set; }
+    public int TextLength { get; set; }
+    public List<string> CategoriesDetected { get; set; } = new();
+    public List<string> Indicators { get; set; } = new();
+    public string? ReviewReason { get; set; }
+    public string? Summary { get; set; }
+}

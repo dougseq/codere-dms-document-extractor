@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -6,60 +6,132 @@ using System.Text.RegularExpressions;
 
 public sealed class RegexExtractors
 {
-    // Core Spanish date patterns: dd/mm/yyyy, d/m/yy, dd-mm-yyyy, dd.mm.yyyy
+    private static string Normalize(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+        var t = s.Replace('\u2013','-').Replace('\u2014','-');
+        t = Regex.Replace(t, @"\s+", " ").Trim();
+        return t;
+    }
+
     private static readonly Regex DateRegex = new(
         @"(?<!\d)(?<day>0?[1-9]|[12]\d|3[01])[/\-.](?<month>0?[1-9]|1[0-2])[/\-.](?<year>(19|20)?\d{2})(?!\d)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly string[] DateFormats = new[]
     {
-        "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy",
-        "dd.MM.yyyy", "d.M.yyyy", "dd/MM/yy", "d/M/yy", "dd-MM-yy", "d-M-yy"
+        "dd/MM/yyyy","d/M/yyyy","dd-MM-yyyy","d-M-yyyy","dd.MM.yyyy","d.M.yyyy",
+        "dd/MM/yy","d/M/yy","dd-MM-yy","d-M-yy"
     };
 
-    // Anchors for contextual extraction
-    private static readonly string[] CaducidadAnchors = new[] { "caduc", "vencim", "validez", "hasta" };
-    private static readonly string[] ConcesionAnchors = new[] { "conces", "resoluci", "emisi", "otorga" };
-    private static readonly string[] RenovacionAnchors = new[] { "renovac" };
+    private static readonly string[] CaducidadAnchors = { "caduc", "vencim", "validez", "hasta" };
+    private static readonly string[] ConcesionAnchors = { "conces", "resoluci", "emisi", "otorga" };
+    private static readonly string[] RenovacionAnchors = { "renovac" };
 
-    // Other fields
-    private static readonly Regex ExpedienteRegex = new(@"(?i)\b(expediente|exp\.?)\s*[:\-]?\s*(?<exp>[\w\-\/\.]{6,40})", RegexOptions.Compiled);
-    private static readonly Regex NifCifRegex = new(@"(?i)\b(NIF|CIF|NIE)\s*[:\-]?\s*(?<id>[A-Z0-9][0-9]{7,8}[A-Z0-9])", RegexOptions.Compiled);
-    private static readonly Regex AyuntamientoRegex = new(@"(?i)\bAyuntamiento\s+de\s+(?<muni>[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\-\s]+)", RegexOptions.Compiled);
-    private static readonly Regex DireccionRegex = new(@"(?i)\b(Direcci[oó]n|Domicilio|C/|Calle|Avda\.?|Avenida)\s*[:\-]?\s*(?<dir>.+)", RegexOptions.Compiled);
-    private static readonly Regex ActividadRegex = new(@"(?i)\b(Actividad|Ep[ií]grafe|IAE)\s*[:\-]?\s*(?<act>.+)", RegexOptions.Compiled);
+    private static readonly Regex ExpedienteLineRegex = new(
+    @"(?ix)                                   # ignorecase + verbose
+      \b
+      (?:                                     # variantes de EXPEDIENTE
+         expediente | expdte | expedte | expte | exp\.?
+      )
+      \b
+      [\s:;""'\u00AB\u00BB\-–—\.]*            # separadores comunes
+      (?:                                     # sufijo opcional tipo número
+         (?:n[\u00BA\u00B0])
+         | n(?:\u00FAm\.?|um\.?)
+         | \u00FAn\.?
+         | n\u00FAmero
+         | numero
+         | no\.?
+      )?
+      [\s\-]*                                 # separador extra antes del código
+      (?<exp>                                 # el código real
+         [A-Z0-9] [A-Z0-9\./\-]{3,80}
+      )
+    ",
+    RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
+    private static readonly Regex NifCifLabeledRegex = new(
+        @"(?i)\b(C\.?\s?I\.?\s?F\.?|CIF|N\.?\s?I\.?\s?F\.?|NIF|N\.?\s?I\.?\s?E\.?|NIE)\b\s*[:\-]?\s*(?<id>[A-Z0-9][\s\-]?\d{7,8}[\s\-]?[A-Z0-9])",
+        RegexOptions.Compiled);
+
+    private static readonly Regex NifCifGenericRegex = new(
+        @"(?i)\b([A-Z]\s?\d{7}\s?[A-Z]|[0-9]\s?\d{7}\s?[A-Z]|[XYZ]\s?\d{7}\s?[A-Z])\b",
+        RegexOptions.Compiled);
+
+    private static readonly Regex AyuntamientoRegex = new(
+        @"(?i)\bAyuntamiento\s+de\s+(?<muni>[^\r\n:,;]{2,80})",
+        RegexOptions.Compiled);
+    private static readonly Regex MunicipioRegex = new(
+        @"(?i)\b(Municipio|Localidad|Poblaci\u00F3n)\b.*?[:\-]?\s*(?<muni>[\p{L}\s\.\-]{2,50})",
+        RegexOptions.Compiled);
+
+    private static readonly Regex DireccionRegex = new(
+        @"(?i)\b(Direcci\u00F3n|Domicilio|C/|Calle|Avda\.?|Avenida)\s*[:\-]?\s*(?<dir>.+)",
+        RegexOptions.Compiled);
+    private static readonly Regex ActividadRegex = new(
+        @"(?i)\b(Actividad(?:es)?(?:\s+Econ\u00F3mica(?:s)?)?|Ep\u00EDgrafe\s*IAE|IAE|CNAE|Objeto)\b[:\-]?\s*(?<act>.+)",
+        RegexOptions.Compiled);
+    private static readonly Regex TitularRegex = new(
+        @"(?i)\b(Titular(?:\s+de\s+la\s+actividad)?|Representante|Solicitante|Interesado|Empresa|Raz\u00F3n\s+Social|Denominaci\u00F3n\s+Social)\b\s*[:\-]?\s*(?<name>.+)",
+        RegexOptions.Compiled);
 
     public ExtractResult Extract(string fullText, string? ayuntamientoHint = null, string? muniHint = null)
     {
         var result = new ExtractResult();
-        var lines = SplitLines(fullText);
-        var lowered = fullText.ToLowerInvariant();
+        var normalized = Normalize(fullText);
+        var lines = SplitLines(fullText).ToList();
 
-        // Expediente
-        var mExp = ExpedienteRegex.Match(fullText);
-        if (mExp.Success)
-            result.Expediente = CleanValue(mExp.Groups["exp"].Value);
+        var hint = SanitizeHintPath(ayuntamientoHint);
+        if (!string.IsNullOrWhiteSpace(hint))
+            result.Ayuntamiento = hint;
 
-        // NIF/CIF
-        var mId = NifCifRegex.Match(fullText);
-        if (mId.Success)
-            result.NIF_CIF = CleanValue(mId.Groups["id"].Value);
+        var mAyto = AyuntamientoRegex.Match(fullText);
+        if (mAyto.Success)
+            result.Ayuntamiento = TrimToFieldBoundary(mAyto.Groups["muni"].Value);
 
-        // Ayuntamiento
-        if (!string.IsNullOrWhiteSpace(ayuntamientoHint))
-            result.Ayuntamiento = ayuntamientoHint;
-        else
-        {
-            var mAyto = AyuntamientoRegex.Match(fullText);
-            if (mAyto.Success)
-                result.Ayuntamiento = mAyto.Groups["muni"].Value.Trim();
-        }
-
-        // Municipio
         if (!string.IsNullOrWhiteSpace(muniHint))
             result.Municipio = muniHint;
+        else
+        {
+            var mMun = MunicipioRegex.Match(fullText);
+            if (mMun.Success)
+                result.Municipio = TrimToFieldBoundary(mMun.Groups["muni"].Value);
+        }
 
-        // Dirección (first reasonable match, short-circuit excessive length)
+        var mExp = ExpedienteLineRegex.Match(normalized);
+        if (mExp.Success)
+            result.Expediente = CleanExp(mExp.Groups["exp"].Value);
+        else
+        {
+            var exp = FindCodeAfterAnchor(lines, new[] { "expediente", "expte", "exped" });
+            if (!string.IsNullOrWhiteSpace(exp))
+                result.Expediente = CleanExp(exp);
+        }
+
+        var mId = NifCifLabeledRegex.Match(normalized);
+        if (mId.Success)
+            result.NIF_CIF = CleanValue(mId.Groups["id"].Value);
+        else
+        {
+            var mg = NifCifGenericRegex.Match(normalized);
+            if (mg.Success)
+                result.NIF_CIF = CleanValue(mg.Value);
+        }
+
+        foreach (var line in lines)
+        {
+            var tm = TitularRegex.Match(line);
+            if (tm.Success)
+            {
+                var name = TrimUntilTokens(tm.Groups["name"].Value, new[] { "NIF", "CIF", "NIE" });
+                if (name.Length > 2 && name.Length < 120)
+                {
+                    result.Titular = name;
+                    break;
+                }
+            }
+        }
+
         foreach (var line in lines)
         {
             var dm = DireccionRegex.Match(line);
@@ -74,14 +146,14 @@ public sealed class RegexExtractors
             }
         }
 
-        // Actividad
         foreach (var line in lines)
         {
             var am = ActividadRegex.Match(line);
             if (am.Success)
             {
-                var act = am.Groups["act"].Value.Trim();
-                if (act.Length > 2 && act.Length < 200)
+                var act = TrimUntilTokens(am.Groups["act"].Value, new[] { "IAE", "CNAE", "NIF", "CIF" });
+                act = CleanValue(act);
+                if (act.Length > 3 && act.Length < 200)
                 {
                     result.Actividad = act;
                     break;
@@ -89,52 +161,30 @@ public sealed class RegexExtractors
             }
         }
 
-        // Contextual dates
-        result.FechaCaducidad = FindDateNearAnchors(lines, CaducidadAnchors, out var cadHints);
-        result.FechaConcesion = FindDateNearAnchors(lines, ConcesionAnchors, out var concHints);
-        result.FechaRenovacion = FindDateNearAnchors(lines, RenovacionAnchors, out var renHints);
+        result.FechaCaducidad = FindDateNearAnchors(lines, CaducidadAnchors, out var cadHints, allowFallback:false);
+        result.FechaConcesion = FindDateNearAnchors(lines, ConcesionAnchors, out var concHints, allowFallback:false);
+        result.FechaRenovacion = FindDateNearAnchors(lines, RenovacionAnchors, out var renHints, allowFallback:false);
+        if (!result.FechaCaducidad.HasValue)
+        {
+            var allDates = FindAllDates(lines);
+            if (allDates.Count == 1) result.FechaCaducidad = allDates[0];
+        }
 
-        // Confidence heuristics
-        double score = 0.0;
-        int factors = 0;
-        (double, string)? confCap(string? v, double w, string name) => 
-            string.IsNullOrWhiteSpace(v) ? null : (w, name);
+        result.ConfianzaExtraccion = ComputeConfidence(result, mAyto.Success);
 
-        (double, string)? confDate(DateTime? d, double w, string name) =>
-            d.HasValue ? (w, name) : null;
-
-        var parts = new List<(double,string)>();
-        var e1 = confCap(result.Expediente, 0.25, "Expediente");
-        var e2 = confDate(result.FechaConcesion, 0.25, "FechaConcesion");
-        var e3 = confDate(result.FechaCaducidad, 0.35, "FechaCaducidad");
-        var e4 = confCap(result.NIF_CIF, 0.15, "NIF/CIF");
-
-        if (e1.HasValue) parts.Add(e1.Value);
-        if (e2.HasValue) parts.Add(e2.Value);
-        if (e3.HasValue) parts.Add(e3.Value);
-        if (e4.HasValue) parts.Add(e4.Value);
-
-        foreach (var p in parts) { score += p.Item1; factors++; }
-        if (factors == 0) score = 0;
-        result.ConfianzaExtraccion = Math.Round(score, 2);
-
-        // Hints
-        result.PalabrasClaveDetectadas.AddRange(cadHints);
-        result.PalabrasClaveDetectadas.AddRange(concHints);
-        result.PalabrasClaveDetectadas.AddRange(renHints);
-
-        // Motivo revisión si hay inconsistencias
         var reasons = new List<string>();
         if (result.FechaConcesion.HasValue && result.FechaCaducidad.HasValue &&
             result.FechaCaducidad <= result.FechaConcesion)
             reasons.Add("La caducidad es anterior/igual a la concesión");
-
-        if (result.ConfianzaExtraccion < 0.7)
-            reasons.Add("Confianza baja (<0,7)");
-
+        if (result.Expediente is null || result.Expediente.Length < 6)
+            reasons.Add("Expediente no fiable");
+        if (string.IsNullOrWhiteSpace(result.NIF_CIF))
+            reasons.Add("NIF/CIF no detectado");
         result.MotivoRevision = reasons.Count > 0 ? string.Join("; ", reasons) : null;
 
-        // Resumen breve
+        result.PalabrasClaveDetectadas.AddRange(cadHints);
+        result.PalabrasClaveDetectadas.AddRange(concHints);
+        result.PalabrasClaveDetectadas.AddRange(renHints);
         result.Resumen = BuildResumen(result);
 
         return result;
@@ -143,23 +193,119 @@ public sealed class RegexExtractors
     private static IEnumerable<string> SplitLines(string text) =>
         text.Replace("\r", "").Split('\n').Select(s => s.Trim()).Where(s => s.Length > 0);
 
-    private static string CleanValue(string v) => v.Trim().Trim('.', ',', ';', ':', '-', '—', ' ');
+    private static string CleanValue(string v)
+    {
+        var t = v.Trim();
+        t = Regex.Replace(t, @"\s+", " ");
+        t = t.Trim('.', ',', ';', ':', '-', '\u2013', '\u2014', '"', '\'', ' ');
+        return t;
+    }
 
-    private static DateTime? FindDateNearAnchors(IEnumerable<string> lines, string[] anchors, out List<string> hints)
+    private static string TrimToFieldBoundary(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var trimmed = value.Trim();
+        var breakIndex = trimmed.IndexOfAny(new[] { '\r', '\n' });
+        if (breakIndex >= 0)
+            trimmed = trimmed[..breakIndex];
+
+        foreach (var token in new[] { " expediente", " municipio", " titular", " dirección", " actividad", " nif", " cif" })
+        {
+            var index = trimmed.IndexOf(token, StringComparison.OrdinalIgnoreCase);
+            if (index > 0)
+            {
+                trimmed = trimmed[..index].TrimEnd();
+                break;
+            }
+        }
+
+        return CleanValue(trimmed);
+    }
+
+    private static string CleanExp(string v)
+    {
+        var t = CleanValue(v).ToUpperInvariant();
+        // recorta justo antes de cualquier texto no válido al final
+        var m = Regex.Match(t, @"^[A-Z0-9][A-Z0-9\./\-]{3,80}");
+        return m.Success ? m.Value : t;
+    }
+
+
+    private static string TrimUntilTokens(string input, string[] tokens)
+    {
+        var t = input;
+        foreach (var tok in tokens)
+        {
+            var idx = t.IndexOf(tok, StringComparison.OrdinalIgnoreCase);
+            if (idx > 0) t = t.Substring(0, idx);
+        }
+        return t.Trim();
+    }
+
+    private static string? SanitizeHintPath(string? hint)
+    {
+        if (string.IsNullOrWhiteSpace(hint)) return null;
+        var s = hint.Replace("\\","/");
+        var parts = s.Split(new[]{'/'}, StringSplitOptions.RemoveEmptyEntries).ToList();
+        var noise = new HashSet<string>(StringComparer.OrdinalIgnoreCase){
+            "documentos compartidos","shared documents","forms","licencias","documents","sites","siteassets"
+        };
+        for (int i = parts.Count-1; i>=0; i--)
+        {
+            var p = parts[i].Trim();
+            if (p.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!noise.Contains(p.ToLowerInvariant())) return p;
+        }
+        return parts.LastOrDefault()?.Trim();
+    }
+
+    private static string? FindCodeAfterAnchor(List<string> lines, string[] anchors)
+    {
+        // Un código “bueno” debe tener dígitos y, preferiblemente, separadores tipo / . -
+        bool LooksLikeCode(string s) =>
+            s.Length >= 5 &&
+            Regex.IsMatch(s, @"\d") &&
+            Regex.IsMatch(s, @"[./\-]");
+
+        for (int i = 0; i < lines.Count; i++)
+        {
+            var l = lines[i];
+            if (anchors.Any(a => l.IndexOf(a, StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                // 1) Mismo renglón tras el ancla
+                var after = Regex.Replace(l, @"(?i).*\b(expediente|expdte|expedte|expte|exp\.?)\b[:;""'«»–—\-\.\s]*", "");
+                after = StripLeadingCodeToken(after);
+                var m1 = Regex.Match(after, @"([A-Z0-9][A-Z0-9\./\-]{3,80})", RegexOptions.IgnoreCase);
+                if (m1.Success && LooksLikeCode(m1.Value)) return m1.Value;
+
+                // 2) Línea siguiente
+                if (i + 1 < lines.Count)
+                {
+                    var next = StripLeadingCodeToken(lines[i + 1]);
+                    var m2 = Regex.Match(next, @"([A-Z0-9][A-Z0-9\./\-]{3,80})", RegexOptions.IgnoreCase);
+                    if (m2.Success && LooksLikeCode(m2.Value)) return m2.Value;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static string StripLeadingCodeToken(string s) =>
+        Regex.Replace(s, @"^(?:n[\u00BA\u00B0]|n(?:\u00FAm|um)?\.?)\s+", "", RegexOptions.IgnoreCase);
+
+
+    private static DateTime? FindDateNearAnchors(IEnumerable<string> lines, string[] anchors, out List<string> hints, bool allowFallback)
     {
         hints = new List<string>();
-        var window = 3; // ±3 lines
+        var window = 3;
         var list = lines.ToList();
         for (int i = 0; i < list.Count; i++)
         {
             var l = list[i];
             if (anchors.Any(a => l.IndexOf(a, StringComparison.OrdinalIgnoreCase) >= 0))
             {
-                // Search same line first
                 var d = FindFirstDate(l);
                 if (d.HasValue) { hints.Add(l); return d; }
-
-                // Then search nearby lines
                 for (int j = Math.Max(0, i - window); j <= Math.Min(list.Count - 1, i + window); j++)
                 {
                     if (j == i) continue;
@@ -168,33 +314,39 @@ public sealed class RegexExtractors
                 }
             }
         }
-        // As fallback: first date in the whole document
-        for (int i = 0; i < list.Count; i++)
+        if (allowFallback)
         {
-            var d = FindFirstDate(list[i]);
-            if (d.HasValue) { hints.Add(list[i]); return d; }
+            for (int i = 0; i < list.Count; i++)
+            {
+                var d = FindFirstDate(list[i]);
+                if (d.HasValue) { hints.Add(list[i]); return d; }
+            }
         }
         return null;
+    }
+
+    private static List<DateTime> FindAllDates(IEnumerable<string> lines)
+    {
+        var res = new List<DateTime>();
+        foreach (var l in lines)
+        {
+            var m = DateRegex.Match(l);
+            if (m.Success && TryParseSpanishDate(m.Value, out var dt)) res.Add(dt);
+        }
+        return res;
     }
 
     private static DateTime? FindFirstDate(string line)
     {
         var m = DateRegex.Match(line);
-        if (m.Success)
-        {
-            var raw = m.Value;
-            if (TryParseSpanishDate(raw, out var dt))
-                return dt;
-        }
+        if (m.Success && TryParseSpanishDate(m.Value, out var dt)) return dt;
         return null;
     }
 
     private static bool TryParseSpanishDate(string s, out DateTime dt)
     {
-        // Normalize separators to slash for parsing
         var norm = s.Replace('-', '/').Replace('.', '/');
-        return DateTime.TryParseExact(
-            norm, DateFormats, CultureInfo.CreateSpecificCulture("es-ES"),
+        return DateTime.TryParseExact(norm, DateFormats, CultureInfo.CreateSpecificCulture("es-ES"),
             DateTimeStyles.AssumeLocal | DateTimeStyles.AllowWhiteSpaces, out dt);
     }
 
@@ -206,6 +358,24 @@ public sealed class RegexExtractors
         if (r.FechaCaducidad.HasValue) parts.Add($"Caducidad: {r.FechaCaducidad:yyyy-MM-dd}");
         if (!string.IsNullOrWhiteSpace(r.Titular)) parts.Add($"Titular: {r.Titular}");
         if (!string.IsNullOrWhiteSpace(r.NIF_CIF)) parts.Add($"NIF/CIF: {r.NIF_CIF}");
-        return string.Join(" · ", parts);
+        return string.Join(" | ", parts);
+    }
+
+    private static double ComputeConfidence(ExtractResult r, bool aytoFromDoc)
+    {
+        double score = 0;
+        if (!string.IsNullOrWhiteSpace(r.Expediente) && r.Expediente.Length >= 7) score += 0.30;
+        if (r.FechaConcesion.HasValue) score += 0.25;
+        if (r.FechaCaducidad.HasValue) score += 0.30;
+        if (!string.IsNullOrWhiteSpace(r.NIF_CIF)) score += 0.10;
+        if (aytoFromDoc) score += 0.05;
+
+        if (r.FechaConcesion.HasValue && r.FechaCaducidad.HasValue && r.FechaCaducidad <= r.FechaConcesion) score -= 0.20;
+        if (string.IsNullOrWhiteSpace(r.Expediente) || r.Expediente.Length < 7) score -= 0.10;
+
+        if (score < 0) score = 0;
+        if (score > 1) score = 1;
+        return Math.Round(score, 2);
     }
 }
+
