@@ -52,5 +52,32 @@
         "direction": "Out"
       }
     ]
+  },
+  {
+    "name": "SummarizeDocument",
+    "scriptFile": "AzureFunction_LicenseExtractor.dll",
+    "entryPoint": "SummarizeDocument.Run",
+    "language": "dotnet-isolated",
+    "properties": {
+      "IsCodeless": false
+    },
+    "bindings": [
+      {
+        "name": "req",
+        "direction": "In",
+        "type": "httpTrigger",
+        "authLevel": "Function",
+        "methods": [
+          "post"
+        ],
+        "route": "summarize-document",
+        "properties": {}
+      },
+      {
+        "name": "$return",
+        "type": "http",
+        "direction": "Out"
+      }
+    ]
   }
 ]

@@ -45,3 +45,26 @@ public sealed class PersonalDataDetectionResult
     public string? ReviewReason { get; set; }
     public string? Summary { get; set; }
 }
+
+public sealed class DocumentSummaryRequest
+{
+    public string? FileName { get; set; }
+    public string? ContentBase64 { get; set; }
+}
+
+public sealed class DocumentSummarySection
+{
+    public string? Heading { get; set; }
+    public List<string> KeyPoints { get; set; } = new();
+}
+
+public sealed class DocumentSummaryResult
+{
+    public string? FileType { get; set; }
+    public int TextLength { get; set; }
+    public string? DocumentTitle { get; set; }
+    public List<string> KeywordsDetected { get; set; } = new();
+    public List<DocumentSummarySection> Outline { get; set; } = new();
+    public string? StructuredSummary { get; set; }
+    public string? ReviewReason { get; set; }
+}

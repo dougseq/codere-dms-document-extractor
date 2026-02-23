@@ -61,6 +61,25 @@ Notas de extracción:
 - Para `.pdf`, `.docx` y `.xlsx` se usa **Azure AI Document Intelligence**.
 - Para `.txt` se decodifica texto directamente (UTF-8 y fallback Latin1).
 
+### Criterios de detección (implementación actual)
+La detección se basa en reglas `regex` sobre el texto extraído. Si al menos una categoría coincide, el documento se marca como que contiene datos personales.
+
+Categorías y señales principales:
+- `Identificativo` (`+0.35`): patrones tipo DNI/NIE/CIF.
+- `Contacto` (`+0.20`): email.
+- `Contacto` (`+0.20`): teléfonos españoles (incluyendo prefijo `+34`).
+- `Direcciones` (`+0.15`): términos como `domicilio`, `dirección`, `calle`, `avenida`, `plaza`, `c/` y texto cercano.
+- `Financiero` (`+0.30`): IBAN español (`ES` + 22 caracteres alfanuméricos).
+- `Especial` (`+0.40` a `+0.45`): salud, biométricos, ideología/opinión política/afiliación sindical, religión/creencias, orientación o vida sexual, origen racial/etnia, condenas o antecedentes penales.
+
+Reglas adicionales:
+- Tarjetas potenciales: secuencias de `13` a `19` dígitos (con separadores) se validan con algoritmo **Luhn**. Si pasa, se añade categoría `Financiero` (`+0.30`).
+- Si se detectan `2` o más categorías, se añade un bonus de `+0.10`.
+- `score` final: limitado a rango `0.00`-`1.00` y redondeado a `2` decimales.
+- `containsPersonalData`: `true` cuando hay al menos una categoría detectada (no hay umbral mínimo de `score`).
+- `containsSpecialCategoryData`: `true` cuando hay coincidencias de categoría `Especial`.
+- `indicators`: se guardan muestras de coincidencias para trazabilidad (hasta `3` por regla y máximo `25` en total, limpiadas/acotadas).
+
 ### Request JSON
 ```json
 {
@@ -117,3 +136,62 @@ Invoke-RestMethod `
   -ContentType "application/json" `
   -Body $body
 ```
+
+## Endpoint: Resumen esquematizado de documentos
+Endpoint local: `POST http://localhost:7071/api/summarize-document`
+
+Esta función recibe un archivo en base64, extrae su texto y devuelve un resumen estructurado por secciones y puntos clave.
+
+Formatos soportados:
+- `.pdf`
+- `.docx`
+- `.pptx`
+- `.xlsx`
+- `.txt`
+
+Notas de extracción:
+- Para `.pdf`, `.docx`, `.pptx` y `.xlsx` se usa **Azure AI Document Intelligence**.
+- Para `.txt` se decodifica texto directamente (UTF-8 y fallback Latin1).
+
+### Request JSON
+```json
+{
+  "fileName": "informe_trimestral.pptx",
+  "contentBase64": "<BASE64-FILE>"
+}
+```
+
+### Response JSON
+```json
+{
+  "fileType": ".pptx",
+  "textLength": 5821,
+  "documentTitle": "Informe Trimestral 2025",
+  "keywordsDetected": ["ingresos", "objetivos", "clientes"],
+  "outline": [
+    {
+      "heading": "Resumen ejecutivo",
+      "keyPoints": [
+        "El crecimiento de ingresos fue del 12% respecto al trimestre anterior.",
+        "Se abrieron dos nuevas lineas de negocio en el segmento enterprise."
+      ]
+    }
+  ],
+  "structuredSummary": "Documento: Informe Trimestral 2025\nTipo: .pptx\n...",
+  "reviewReason": null
+}
+```
+
+Campos de respuesta:
+- `fileType`: extensión detectada.
+- `textLength`: cantidad de texto analizado.
+- `documentTitle`: titulo detectado (o nombre de archivo).
+- `keywordsDetected`: temas clave detectados por frecuencia.
+- `outline`: secciones del resumen con puntos clave.
+- `structuredSummary`: version textual del resumen esquematizado.
+- `reviewReason`: motivo de revisión si no hubo texto suficiente o no se detectaron secciones claras.
+
+### Códigos de respuesta
+- `200 OK`: análisis completado.
+- `400 Bad Request`: JSON inválido, base64 inválido o extensión no soportada.
+- `500 Internal Server Error`: error interno durante extracción o resumen.
