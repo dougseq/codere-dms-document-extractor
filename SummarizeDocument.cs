@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
@@ -55,10 +57,20 @@ public sealed class SummarizeDocument
             }
 
             var result = await _summaryService.SummarizeAsync(request.FileName, bytes);
+            var heading = string.Join(" ", result.Outline
+                .Select(x => x.Heading)
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
+            var keyPoints = string.Join(" ", result.Outline
+                .SelectMany(x => x.KeyPoints)
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
+            var sumario = string.Join(" ", new[] { heading, keyPoints, result.StructuredSummary }
+                .Where(x => !string.IsNullOrWhiteSpace(x)));
 
             var ok = req.CreateResponse(System.Net.HttpStatusCode.OK);
             ok.Headers.Add("Content-Type", "application/json; charset=utf-8");
-            await ok.WriteStringAsync(JsonSerializer.Serialize(result, ResponseJsonOptions));
+            await ok.WriteStringAsync(JsonSerializer.Serialize(
+                new Dictionary<string, string> { ["Sumario"] = sumario },
+                ResponseJsonOptions));
             return ok;
         }
         catch (JsonException ex)
