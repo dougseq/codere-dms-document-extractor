@@ -142,7 +142,7 @@ Endpoint local: `POST http://localhost:7071/api/summarize-document`
 
 Esta función recibe un archivo en base64, extrae su texto y devuelve:
 - `Sumario`: resumen consolidado.
-- `PuntosClave`: lista separada con los puntos clave detectados.
+- `PuntosClave`: texto con los puntos clave separados por `|`.
 
 `Sumario` se construye concatenando: `heading + " " + structuredSummary`.
 
@@ -169,16 +169,13 @@ Notas de extracción:
 ```json
 {
   "Sumario": "Resumen ejecutivo Documento: Informe Trimestral 2025 Tipo: .pptx ...",
-  "PuntosClave": [
-    "El crecimiento de ingresos fue del 12% respecto al trimestre anterior.",
-    "Se abrieron dos nuevas lineas de negocio en el segmento enterprise."
-  ]
+  "PuntosClave": "El crecimiento de ingresos fue del 12% respecto al trimestre anterior. | Se abrieron dos nuevas lineas de negocio en el segmento enterprise."
 }
 ```
 
 Campos de respuesta:
 - `Sumario`: texto final que combina encabezados y resumen estructurado.
-- `PuntosClave`: arreglo con puntos clave detectados en el documento.
+- `PuntosClave`: cadena única con puntos clave detectados, normalizados en una sola línea y separados por `|`.
 
 ### Códigos de respuesta
 - `200 OK`: análisis completado.

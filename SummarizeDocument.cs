@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
@@ -59,11 +60,15 @@ public sealed class SummarizeDocument
             var result = await _summaryService.SummarizeAsync(request.FileName, bytes);
             var heading = string.Join(" ", result.Outline
                 .Select(x => x.Heading)
-                .Where(x => !string.IsNullOrWhiteSpace(x)));
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(NormalizeForSharePoint));
             var keyPoints = result.Outline
                 .SelectMany(x => x.KeyPoints)
                 .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(NormalizeForSharePoint)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
                 .ToList();
+            var puntosClave = string.Join(" | ", keyPoints);
             var sumario = string.Join(" ", new[] { heading, result.StructuredSummary }
                 .Where(x => !string.IsNullOrWhiteSpace(x)));
 
@@ -73,7 +78,7 @@ public sealed class SummarizeDocument
                 new Dictionary<string, object>
                 {
                     ["Sumario"] = sumario,
-                    ["PuntosClave"] = keyPoints
+                    ["PuntosClave"] = puntosClave
                 },
                 ResponseJsonOptions));
             return ok;
@@ -97,5 +102,23 @@ public sealed class SummarizeDocument
         var bad = req.CreateResponse(System.Net.HttpStatusCode.BadRequest);
         await bad.WriteStringAsync(message);
         return bad;
+    }
+
+    private static string NormalizeForSharePoint(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var normalized = value
+            .Replace("\\r\\n", " ", StringComparison.Ordinal)
+            .Replace("\\n", " ", StringComparison.Ordinal)
+            .Replace("\\r", " ", StringComparison.Ordinal)
+            .Replace("\\t", " ", StringComparison.Ordinal)
+            .Replace("\r\n", " ", StringComparison.Ordinal)
+            .Replace("\n", " ", StringComparison.Ordinal)
+            .Replace("\r", " ", StringComparison.Ordinal)
+            .Replace("\t", " ", StringComparison.Ordinal);
+
+        return Regex.Replace(normalized, @"\s+", " ").Trim();
     }
 }
