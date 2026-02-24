@@ -15,6 +15,7 @@ var host = new HostBuilder()
         services.AddSingleton<RegexExtractors>();
         services.AddSingleton<PersonalDataDetector>();
         services.AddSingleton<DocumentSummaryService>();
+        services.AddSingleton<DocumentTypePredictor>();
     })
     .Build();
 

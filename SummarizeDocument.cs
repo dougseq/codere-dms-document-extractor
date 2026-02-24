@@ -23,11 +23,16 @@ public sealed class SummarizeDocument
     };
 
     private readonly DocumentSummaryService _summaryService;
+    private readonly DocumentTypePredictor _documentTypePredictor;
     private readonly ILogger _logger;
 
-    public SummarizeDocument(DocumentSummaryService summaryService, ILoggerFactory loggerFactory)
+    public SummarizeDocument(
+        DocumentSummaryService summaryService,
+        DocumentTypePredictor documentTypePredictor,
+        ILoggerFactory loggerFactory)
     {
         _summaryService = summaryService;
+        _documentTypePredictor = documentTypePredictor;
         _logger = loggerFactory.CreateLogger<SummarizeDocument>();
     }
 
@@ -69,8 +74,9 @@ public sealed class SummarizeDocument
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .ToList();
             var puntosClave = string.Join(" | ", keyPoints);
-            var sumario = string.Join(" ", new[] { heading, result.StructuredSummary }
+            var sumario = string.Join(" ", new[] { heading, NormalizeForSharePoint(result.StructuredSummary) }
                 .Where(x => !string.IsNullOrWhiteSpace(x)));
+            var tipoDocumento = _documentTypePredictor.PredictBestMatch(request.FileName, sumario, puntosClave);
 
             var ok = req.CreateResponse(System.Net.HttpStatusCode.OK);
             ok.Headers.Add("Content-Type", "application/json; charset=utf-8");
@@ -78,7 +84,8 @@ public sealed class SummarizeDocument
                 new Dictionary<string, object>
                 {
                     ["Sumario"] = sumario,
-                    ["PuntosClave"] = puntosClave
+                    ["PuntosClave"] = puntosClave,
+                    ["Tipo de Documento"] = tipoDocumento
                 },
                 ResponseJsonOptions));
             return ok;

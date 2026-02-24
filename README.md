@@ -143,6 +143,7 @@ Endpoint local: `POST http://localhost:7071/api/summarize-document`
 Esta función recibe un archivo en base64, extrae su texto y devuelve:
 - `Sumario`: resumen consolidado.
 - `PuntosClave`: texto con los puntos clave separados por `|`.
+- `Tipo de Documento`: mejor coincidencia predicha para el campo Choice de SharePoint.
 
 `Sumario` se construye concatenando: `heading + " " + structuredSummary`.
 
@@ -169,13 +170,15 @@ Notas de extracción:
 ```json
 {
   "Sumario": "Resumen ejecutivo Documento: Informe Trimestral 2025 Tipo: .pptx ...",
-  "PuntosClave": "El crecimiento de ingresos fue del 12% respecto al trimestre anterior. | Se abrieron dos nuevas lineas de negocio en el segmento enterprise."
+  "PuntosClave": "El crecimiento de ingresos fue del 12% respecto al trimestre anterior. | Se abrieron dos nuevas lineas de negocio en el segmento enterprise.",
+  "Tipo de Documento": "Informes de cumplimiento (compliance)"
 }
 ```
 
 Campos de respuesta:
 - `Sumario`: texto final que combina encabezados y resumen estructurado.
 - `PuntosClave`: cadena única con puntos clave detectados, normalizados en una sola línea y separados por `|`.
+- `Tipo de Documento`: valor predicho dentro de las opciones configuradas del campo `Tipo de Documento` (Choice) en SharePoint.
 
 ### Códigos de respuesta
 - `200 OK`: análisis completado.
