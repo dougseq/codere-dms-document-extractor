@@ -60,16 +60,21 @@ public sealed class SummarizeDocument
             var heading = string.Join(" ", result.Outline
                 .Select(x => x.Heading)
                 .Where(x => !string.IsNullOrWhiteSpace(x)));
-            var keyPoints = string.Join(" ", result.Outline
+            var keyPoints = result.Outline
                 .SelectMany(x => x.KeyPoints)
-                .Where(x => !string.IsNullOrWhiteSpace(x)));
-            var sumario = string.Join(" ", new[] { heading, keyPoints, result.StructuredSummary }
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+            var sumario = string.Join(" ", new[] { heading, result.StructuredSummary }
                 .Where(x => !string.IsNullOrWhiteSpace(x)));
 
             var ok = req.CreateResponse(System.Net.HttpStatusCode.OK);
             ok.Headers.Add("Content-Type", "application/json; charset=utf-8");
             await ok.WriteStringAsync(JsonSerializer.Serialize(
-                new Dictionary<string, string> { ["Sumario"] = sumario },
+                new Dictionary<string, object>
+                {
+                    ["Sumario"] = sumario,
+                    ["PuntosClave"] = keyPoints
+                },
                 ResponseJsonOptions));
             return ok;
         }

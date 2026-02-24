@@ -140,7 +140,11 @@ Invoke-RestMethod `
 ## Endpoint: Resumen esquematizado de documentos
 Endpoint local: `POST http://localhost:7071/api/summarize-document`
 
-Esta función recibe un archivo en base64, extrae su texto y devuelve un resumen estructurado por secciones y puntos clave.
+Esta función recibe un archivo en base64, extrae su texto y devuelve:
+- `Sumario`: resumen consolidado.
+- `PuntosClave`: lista separada con los puntos clave detectados.
+
+`Sumario` se construye concatenando: `heading + " " + structuredSummary`.
 
 Formatos soportados:
 - `.pdf`
@@ -164,32 +168,17 @@ Notas de extracción:
 ### Response JSON
 ```json
 {
-  "fileType": ".pptx",
-  "textLength": 5821,
-  "documentTitle": "Informe Trimestral 2025",
-  "keywordsDetected": ["ingresos", "objetivos", "clientes"],
-  "outline": [
-    {
-      "heading": "Resumen ejecutivo",
-      "keyPoints": [
-        "El crecimiento de ingresos fue del 12% respecto al trimestre anterior.",
-        "Se abrieron dos nuevas lineas de negocio en el segmento enterprise."
-      ]
-    }
-  ],
-  "structuredSummary": "Documento: Informe Trimestral 2025\nTipo: .pptx\n...",
-  "reviewReason": null
+  "Sumario": "Resumen ejecutivo Documento: Informe Trimestral 2025 Tipo: .pptx ...",
+  "PuntosClave": [
+    "El crecimiento de ingresos fue del 12% respecto al trimestre anterior.",
+    "Se abrieron dos nuevas lineas de negocio en el segmento enterprise."
+  ]
 }
 ```
 
 Campos de respuesta:
-- `fileType`: extensión detectada.
-- `textLength`: cantidad de texto analizado.
-- `documentTitle`: titulo detectado (o nombre de archivo).
-- `keywordsDetected`: temas clave detectados por frecuencia.
-- `outline`: secciones del resumen con puntos clave.
-- `structuredSummary`: version textual del resumen esquematizado.
-- `reviewReason`: motivo de revisión si no hubo texto suficiente o no se detectaron secciones claras.
+- `Sumario`: texto final que combina encabezados y resumen estructurado.
+- `PuntosClave`: arreglo con puntos clave detectados en el documento.
 
 ### Códigos de respuesta
 - `200 OK`: análisis completado.
