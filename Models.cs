@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 public sealed class ExtractRequest
 {
@@ -25,6 +26,18 @@ public sealed class ExtractResult
     public string? MotivoRevision { get; set; }
     public List<string> PalabrasClaveDetectadas { get; set; } = new();
     public string? Resumen { get; set; }
+
+    [JsonPropertyName("GD_AutoridadOrganismo")]
+    public string? GD_AutoridadOrganismo { get; set; }
+
+    [JsonPropertyName("GD_FechaRevision")]
+    public DateOnly? GD_FechaRevision { get; set; }
+
+    [JsonPropertyName("GD_FechaVigencia")]
+    public DateOnly? GD_FechaVigencia { get; set; }
+
+    [JsonPropertyName("GD_Pais")]
+    public string? GD_Pais { get; set; }
 }
 
 public sealed class PersonalDataDetectionRequest
@@ -63,6 +76,7 @@ public sealed class DocumentSummaryResult
     public string? FileType { get; set; }
     public int TextLength { get; set; }
     public string? DocumentTitle { get; set; }
+    public string? SourceText { get; set; }
     public List<string> KeywordsDetected { get; set; } = new();
     public List<DocumentSummarySection> Outline { get; set; } = new();
     public string? StructuredSummary { get; set; }

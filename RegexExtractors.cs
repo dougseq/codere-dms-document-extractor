@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 
 public sealed class RegexExtractors
@@ -73,6 +74,9 @@ public sealed class RegexExtractors
         RegexOptions.Compiled);
     private static readonly Regex TitularRegex = new(
         @"(?i)\b(Titular(?:\s+de\s+la\s+actividad)?|Representante|Solicitante|Interesado|Empresa|Raz\u00F3n\s+Social|Denominaci\u00F3n\s+Social)\b\s*[:\-]?\s*(?<name>.+)",
+        RegexOptions.Compiled);
+    private static readonly Regex AutoridadOrganismoRegex = new(
+        @"(?i)\b(Autoridad|Organismo)\b\s*[:\-]?\s*(?<value>.+)",
         RegexOptions.Compiled);
 
     public ExtractResult Extract(string fullText, string? ayuntamientoHint = null, string? muniHint = null)
@@ -186,6 +190,14 @@ public sealed class RegexExtractors
         result.PalabrasClaveDetectadas.AddRange(concHints);
         result.PalabrasClaveDetectadas.AddRange(renHints);
         result.Resumen = BuildResumen(result);
+        result.GD_AutoridadOrganismo = ResolveAutoridadOrganismo(lines, result.Ayuntamiento, result.Municipio);
+        result.GD_FechaRevision = result.FechaRenovacion.HasValue
+            ? DateOnly.FromDateTime(result.FechaRenovacion.Value)
+            : null;
+        result.GD_FechaVigencia = result.FechaCaducidad.HasValue
+            ? DateOnly.FromDateTime(result.FechaCaducidad.Value)
+            : null;
+        result.GD_Pais = ResolvePais(fullText, result.Ayuntamiento);
 
         return result;
     }
@@ -359,6 +371,58 @@ public sealed class RegexExtractors
         if (!string.IsNullOrWhiteSpace(r.Titular)) parts.Add($"Titular: {r.Titular}");
         if (!string.IsNullOrWhiteSpace(r.NIF_CIF)) parts.Add($"NIF/CIF: {r.NIF_CIF}");
         return string.Join(" | ", parts);
+    }
+
+    private static string? ResolveAutoridadOrganismo(IEnumerable<string> lines, string? ayuntamiento, string? municipio)
+    {
+        foreach (var line in lines)
+        {
+            var m = AutoridadOrganismoRegex.Match(line);
+            if (m.Success)
+            {
+                var value = CleanValue(TrimToFieldBoundary(m.Groups["value"].Value));
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(ayuntamiento))
+            return ayuntamiento;
+        if (!string.IsNullOrWhiteSpace(municipio))
+            return municipio;
+
+        return null;
+    }
+
+    private static string? ResolvePais(string fullText, string? ayuntamiento)
+    {
+        var folded = FoldForMatch(fullText);
+        if (Regex.IsMatch(folded, @"\bargentina\b", RegexOptions.IgnoreCase)) return "Argentina";
+        if (Regex.IsMatch(folded, @"\bcolombia\b", RegexOptions.IgnoreCase)) return "Colombia";
+        if (Regex.IsMatch(folded, @"\bespana\b", RegexOptions.IgnoreCase)) return "España";
+        if (Regex.IsMatch(folded, @"\bitalia\b", RegexOptions.IgnoreCase)) return "Italia";
+        if (Regex.IsMatch(folded, @"\bmexico\b", RegexOptions.IgnoreCase)) return "México";
+        if (Regex.IsMatch(folded, @"\bpanama\b", RegexOptions.IgnoreCase)) return "Panamá";
+        if (Regex.IsMatch(folded, @"\buruguay\b", RegexOptions.IgnoreCase)) return "Uruguay";
+
+        if (!string.IsNullOrWhiteSpace(ayuntamiento))
+            return "España";
+
+        return null;
+    }
+
+    private static string FoldForMatch(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+
+        var normalized = input.Normalize(NormalizationForm.FormD);
+        var buffer = new StringBuilder(normalized.Length);
+        foreach (var ch in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                buffer.Append(char.ToLowerInvariant(ch));
+        }
+        return buffer.ToString().Normalize(NormalizationForm.FormC);
     }
 
     private static double ComputeConfidence(ExtractResult r, bool aytoFromDoc)

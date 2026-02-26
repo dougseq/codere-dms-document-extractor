@@ -39,7 +39,8 @@ public sealed class DocumentSummaryService
         {
             FileType = extension,
             TextLength = normalizedText.Length,
-            DocumentTitle = ExtractTitle(normalizedText, fileName)
+            DocumentTitle = ExtractTitle(normalizedText, fileName),
+            SourceText = normalizedText
         };
 
         if (normalizedText.Length < 40)

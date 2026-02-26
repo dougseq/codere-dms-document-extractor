@@ -7,6 +7,7 @@ then applies **regex + anchor proximity** rules to detect key metadata:
 - Titular, NIF/CIF
 - Dirección del local, Actividad
 - Fechas: Concesión, Caducidad, Renovación
+- Campos `GD_*`: `GD_AutoridadOrganismo`, `GD_FechaRevision`, `GD_FechaVigencia`, `GD_Pais`
 - ConfianzaExtraccion, MotivoRevision, Resumen
 
 ## Environment settings (local.settings.json)
@@ -38,11 +39,45 @@ HTTP endpoint (local): `POST http://localhost:7071/api/extract`
   "ayuntamiento": "Madrid",
   "fechaConcesion": "2024-01-15T00:00:00",
   "fechaCaducidad": "2026-01-15T00:00:00",
+  "GD_AutoridadOrganismo": "Ayuntamiento de Madrid",
+  "GD_FechaRevision": "2025-01-15",
+  "GD_FechaVigencia": "2026-01-15",
+  "GD_Pais": "España",
   "confianzaExtraccion": 0.85,
   "motivoRevision": null,
   "palabrasClaveDetectadas": ["Caducidad: 15/01/2026"]
 }
 ```
+
+`GD_Pais` se limita a: `Argentina`, `Colombia`, `España`, `Italia`, `México`, `Panamá`, `Uruguay`.
+
+### Campos `GD_*` (nuevo)
+Estos campos se devuelven en el endpoint `POST /api/extract` para mapearlos directamente en columnas de SharePoint:
+
+- `GD_AutoridadOrganismo` (`Single line of text`)
+  - Valor extraído desde líneas con ancla `Autoridad` u `Organismo`.
+  - Fallback: `Ayuntamiento` y, si no existe, `Municipio`.
+- `GD_FechaRevision` (`Date only`)
+  - Se rellena con la fecha detectada de `FechaRenovacion` (`yyyy-MM-dd`).
+- `GD_FechaVigencia` (`Date only`)
+  - Se rellena con la fecha detectada de `FechaCaducidad` (`yyyy-MM-dd`).
+- `GD_Pais` (`Choice`)
+  - Opciones válidas: `Argentina`, `Colombia`, `España`, `Italia`, `México`, `Panamá`, `Uruguay`.
+  - Detección por presencia de país en el texto (comparación sin acentos).
+  - Fallback actual: si se detecta `Ayuntamiento`, se asigna `España`.
+
+### Configuración recomendada en SharePoint
+- Crear `GD_AutoridadOrganismo` como `Single line of text`.
+- Crear `GD_FechaRevision` como `Date and Time` con formato `Date only`.
+- Crear `GD_FechaVigencia` como `Date and Time` con formato `Date only`.
+- Crear `GD_Pais` como `Choice` con exactamente estas opciones:
+  - `Argentina`
+  - `Colombia`
+  - `España`
+  - `Italia`
+  - `México`
+  - `Panamá`
+  - `Uruguay`
 
 > Tip: In **Power Automate**, send file content as base64 and update SharePoint columns with the response.
 
@@ -144,6 +179,10 @@ Esta función recibe un archivo en base64, extrae su texto y devuelve:
 - `Sumario`: resumen consolidado.
 - `PuntosClave`: texto con los puntos clave separados por `|`.
 - `Tipo de Documento`: mejor coincidencia predicha para el campo Choice de SharePoint.
+- `Autoridad Organismo`: valor estimado para columna `Single line of text`.
+- `Fecha Revision`: valor estimado para columna `Date only`.
+- `Fecha Vigencia`: valor estimado para columna `Date only`.
+- `Pais`: valor estimado para columna `Choice`.
 
 `Sumario` se construye concatenando: `heading + " " + structuredSummary`.
 
@@ -171,7 +210,11 @@ Notas de extracción:
 {
   "Sumario": "Resumen ejecutivo Documento: Informe Trimestral 2025 Tipo: .pptx ...",
   "PuntosClave": "El crecimiento de ingresos fue del 12% respecto al trimestre anterior. | Se abrieron dos nuevas lineas de negocio en el segmento enterprise.",
-  "Tipo de Documento": "Informes de cumplimiento (compliance)"
+  "Tipo de Documento": "Informes de cumplimiento (compliance)",
+  "Autoridad Organismo": "Ayuntamiento de Madrid",
+  "Fecha Revision": "2025-01-15",
+  "Fecha Vigencia": "2026-01-15",
+  "Pais": "España"
 }
 ```
 
@@ -179,6 +222,10 @@ Campos de respuesta:
 - `Sumario`: texto final que combina encabezados y resumen estructurado.
 - `PuntosClave`: cadena única con puntos clave detectados, normalizados en una sola línea y separados por `|`.
 - `Tipo de Documento`: valor predicho dentro de las opciones configuradas del campo `Tipo de Documento` (Choice) en SharePoint.
+- `Autoridad Organismo`: texto detectado/predicho desde el contenido (anclas como `Autoridad`, `Organismo`, `Ayuntamiento`, `Ministerio`, etc.).
+- `Fecha Revision`: fecha detectada/predicha cerca de términos `revision`, `renovacion` o `actualizacion` (formato `yyyy-MM-dd`).
+- `Fecha Vigencia`: fecha detectada/predicha cerca de términos `vigencia`, `caducidad`, `vencimiento` o `validez` (formato `yyyy-MM-dd`).
+- `Pais`: valor detectado/predicho restringido a `Argentina`, `Colombia`, `España`, `Italia`, `México`, `Panamá`, `Uruguay`.
 
 ### Códigos de respuesta
 - `200 OK`: análisis completado.
